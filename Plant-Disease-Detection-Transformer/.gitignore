@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+# 87 MB optimiser/resume checkpoint - regenerate with src/train.py --resume if needed
+models/last_checkpoint.pt
+# 20k PlantVillage images live in the sibling CNN project, never copy them here
+data/PlantVillage/
+.env
+.DS_Store

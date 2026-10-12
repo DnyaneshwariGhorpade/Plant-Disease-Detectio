@@ -1,0 +1,18 @@
+
+    <html>
+    <head><style>
+    body { font-family: Arial; background: white; padding: 20px; }
+    .box { border: 2px solid #333; padding: 10px; margin: 5px; text-align: center; background: #fee; border-radius: 5px; }
+    .arrow { text-align: center; font-size: 20px; margin: 5px; }
+    </style></head>
+    <body>
+    <h2>Vision Transformer Architecture</h2>
+    <div style="display:flex; flex-direction:column; width:300px;">
+    <div class="box">Input: 96x96x3</div><div class="arrow">&#8595;</div>
+    <div class="box">Patch Embedding (8x8) -> 144 patches</div><div class="arrow">&#8595;</div>
+    <div class="box">+ [CLS] token (145 tokens) & Positional Embeddings</div><div class="arrow">&#8595;</div>
+    <div class="box">12x Encoder Blocks (Multi-Head Self-Attention + MLP)</div><div class="arrow">&#8595;</div>
+    <div class="box">LayerNorm</div><div class="arrow">&#8595;</div>
+    <div class="box">Linear Head (15 classes)</div>
+    </div></body></html>
+    

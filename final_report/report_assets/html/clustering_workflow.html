@@ -1,0 +1,16 @@
+
+    <html>
+    <head><style>
+    body { font-family: Arial; background: white; padding: 20px; }
+    .box { border: 2px solid #333; padding: 10px; margin: 5px; text-align: center; background: #efe; border-radius: 5px; }
+    .arrow { text-align: center; font-size: 20px; margin: 5px; }
+    </style></head>
+    <body>
+    <h2>Clustering Workflow</h2>
+    <div style="display:flex; flex-direction:column; width:300px;">
+    <div class="box">Input Images</div><div class="arrow">&#8595;</div>
+    <div class="box">Resize to 64x64, Flatten (12,288 dims)</div><div class="arrow">&#8595;</div>
+    <div class="box">PCA Dimensionality Reduction (128 dims)</div><div class="arrow">&#8595;</div>
+    <div class="box">MiniBatchKMeans (15 clusters)</div>
+    </div></body></html>
+    

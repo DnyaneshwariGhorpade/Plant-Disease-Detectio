@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plant Disease Detection &middot; Vision Transformer</title>
+<style>
+  :root {
+    --bg: #0f1720;
+    --card: #16212e;
+    --line: #26374a;
+    --text: #e8eef5;
+    --muted: #9fb0c3;
+    --accent: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 64px;
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 28px; }
+  h1 { margin: 0 0 6px; font-size: 27px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .tag {
+    display: inline-block; margin-top: 12px; padding: 4px 12px;
+    border: 1px solid var(--line); border-radius: 999px;
+    font-size: 12px; color: var(--accent); letter-spacing: 0.04em;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px; margin-bottom: 18px;
+  }
+  .drop {
+    border: 2px dashed var(--line); border-radius: 12px;
+    padding: 34px 18px; text-align: center; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); background: #16252a; }
+  .drop p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+  .preview { display: none; margin-top: 18px; text-align: center; }
+  .preview img { max-width: 260px; border-radius: 10px; border: 1px solid var(--line); }
+  button {
+    margin-top: 16px; padding: 11px 20px; border: 0; border-radius: 9px;
+    background: var(--accent); color: #06210f; font-weight: 600;
+    font-size: 14px; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em;
+       color: var(--muted); margin: 0 0 14px; }
+  .cls { font-size: 19px; font-weight: 600; word-break: break-word; }
+  .conf { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .pill {
+    display: inline-block; padding: 3px 11px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; margin-top: 10px;
+  }
+  .pill.ok { background: rgba(74,222,128,.15); color: var(--accent); }
+  .pill.low { background: rgba(251,191,36,.15); color: var(--warn); }
+  .bars { margin-top: 18px; }
+  .bar { margin-bottom: 9px; }
+  .bar .meta {
+    display: flex; justify-content: space-between;
+    font-size: 12.5px; color: var(--muted); margin-bottom: 4px;
+  }
+  .track { height: 7px; background: #0d1620; border-radius: 4px; overflow: hidden; }
+  .fill { height: 100%; background: linear-gradient(90deg, #22c55e, #4ade80); }
+  dl { margin: 0; }
+  dt {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--accent); margin-top: 15px;
+  }
+  dt:first-child { margin-top: 0; }
+  dd { margin: 5px 0 0; color: var(--text); font-size: 14.5px; }
+  .err { color: var(--bad); font-size: 14px; margin-top: 12px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 26px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Plant Disease Detection &amp; Diagnosis</h1>
+    <div class="sub">Upload a leaf photo to identify the disease and get a full diagnosis.</div>
+    <div class="tag">Vision Transformer &middot; ViT-Tiny &middot; 96&times;96 &middot; 15 classes</div>
+  </header>
+
+  <div class="card">
+    <div class="drop" id="drop">
+      <strong>Click to choose an image</strong> or drag &amp; drop it here
+      <p>JPEG or PNG</p>
+      <input type="file" id="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" hidden />
+    </div>
+    <div class="preview" id="preview"><img id="img" alt="selected leaf" /></div>
+    <button id="go" disabled>Analyse leaf</button>
+    <div class="err hidden" id="err"></div>
+  </div>
+
+  <div class="card hidden" id="result">
+    <h2>Prediction</h2>
+    <div class="cls" id="cls"></div>
+    <div class="conf" id="conf"></div>
+    <div id="pill"></div>
+    <div class="bars" id="bars"></div>
+  </div>
+
+  <div class="card hidden" id="diag">
+    <h2>Diagnosis</h2>
+    <dl id="diagbody"></dl>
+  </div>
+
+  <footer>Trained on the PlantVillage dataset &middot; same images and split as the CNN project</footer>
+</div>
+
+<script>
+const drop = document.getElementById('drop');
+const file = document.getElementById('file');
+const img = document.getElementById('img');
+const preview = document.getElementById('preview');
+const go = document.getElementById('go');
+const err = document.getElementById('err');
+const result = document.getElementById('result');
+const diag = document.getElementById('diag');
+let selected = null;
+
+function showError(msg) {
+  err.textContent = msg;
+  err.classList.remove('hidden');
+}
+
+function pick(f) {
+  if (!f) return;
+  err.classList.add('hidden');
+  selected = f;
+  img.src = URL.createObjectURL(f);
+  preview.style.display = 'block';
+  go.disabled = false;
+}
+
+drop.onclick = () => file.click();
+file.onchange = e => pick(e.target.files[0]);
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.add('over');
+}));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.remove('over');
+}));
+drop.addEventListener('drop', e => pick(e.dataTransfer.files[0]));
+
+function bar(name, value) {
+  const pct = (value * 100).toFixed(1);
+  return `<div class="bar">
+    <div class="meta"><span>${name}</span><span>${pct}%</span></div>
+    <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+  </div>`;
+}
+
+go.onclick = async () => {
+  if (!selected) return;
+  go.disabled = true;
+  go.textContent = 'Analysing...';
+  try {
+    const body = new FormData();
+    body.append('image', selected);
+    const res = await fetch('/predict', { method: 'POST', body });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Prediction failed.');
+
+    result.classList.remove('hidden');
+    diag.classList.remove('hidden');
+    document.getElementById('cls').textContent = data.top_class;
+    document.getElementById('conf').textContent =
+      `confidence ${(data.top_confidence * 100).toFixed(1)}%`;
+    document.getElementById('pill').innerHTML = data.confident
+      ? '<span class="pill ok">confident prediction</span>'
+      : '<span class="pill low">low confidence &mdash; verify the image</span>';
+
+    document.getElementById('bars').innerHTML =
+      data.top3.map(t => bar(t.class.replace(/_/g, ' '), t.confidence)).join('');
+
+    const d = data.diagnosis;
+    const body_ = document.getElementById('diagbody');
+    if (!d) {
+      body_.innerHTML = '<dt>Note</dt><dd>No diagnosis entry for this class.</dd>';
+    } else {
+      const rows = [
+        ['Crop', d.crop], ['Common name', d.common_name],
+        ['Status', d.healthy ? 'Healthy' : 'Diseased'],
+        ['Symptoms', d.symptoms], ['Cause', d.cause],
+        ['Treatment', d.treatment], ['Prevention', d.prevention]
+      ].filter(r => r[1]);
+      body_.innerHTML = rows
+        .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+    }
+  } catch (e) {
+    result.classList.add('hidden');
+    diag.classList.add('hidden');
+    showError(e.message);
+  } finally {
+    go.disabled = false;
+    go.textContent = 'Analyse leaf';
+  }
+};
+</script>
+</body>
+</html>
